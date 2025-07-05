@@ -1,0 +1,31 @@
+name: plugin-tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        nvim_tag: [nightly, v0.11.2, v0.10.4]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          version: ${{ matrix.nvim_tag }}
+          neovim: true
+
+      - name: Install test dependencies
+        run: |
+          git clone --depth 1 https://github.com/nvim-lua/plenary.nvim \
+            ~/.local/share/nvim/site/pack/vendor/start/plenary.nvim
+
+      - name: Run tests
+        run: nvim --headless -c "PlenaryBustedDirectory tests/" -c "qa!"
