@@ -60,11 +60,11 @@ local ONEOF = CHAR_CLASSES + C(LEFT_BRACKET) * ((C(CARET) / OP_NEGATE) ^ -1 * (R
 local NONSPECIAL = ANY - SLASH - STAR - WILDCARD - LEFT_BRACKET - ESCAPE
 local NONGLOB = (C(STAR ^ 1) / "*" + C(WILDCARD) + ESCAPE * C(ANY) + C(NONSPECIAL ^ 1) + ONEOF) ^ 1
 
-local PATTERN = Ct(P { "Pattern",
+local PATTERN = Ct(C(SLASH) ^ -1 * P { "Pattern",
   Pattern =
-      C(GLOB) * END +
+      C(GLOB) * C(SLASH) ^ -1 * END +
       C(GLOB * SLASH) * V "Pattern" +
-      NONGLOB * END +
+      NONGLOB * C(SLASH) ^ -1 * END +
       NONGLOB * C(SLASH) * V "Pattern",
 })
 
