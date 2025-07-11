@@ -3,6 +3,7 @@
 --- A Neovim extension to prevent AI extensions from attaching to files listed in .aiignore.
 
 local M = {}
+local compat = require("aiignore.compat")
 local parser = require("aiignore.parser")
 
 --- Configuration for the plugin.
@@ -157,7 +158,13 @@ function M.Pattern:match(path, is_directory, debug_log)
     end
     return ret
   end
-  local relpath = vim.fs.relpath(vim.fs.dirname(self.path), path)
+  local relpath = compat.relpath(vim.fs.dirname(self.path), path)
+  if relpath == nil then
+    if debug_log then
+      vim.notify("Failed to get relative path from '" .. self.path .. "' to '" .. path .. "'", vim.log.levels.DEBUG)
+    end
+    return false
+  end
   local ret = self.pattern:match(relpath) ~= nil
   if debug_log then
     vim.notify("Path '" .. path .. "' match result with relative path '" .. relpath .. "': " .. tostring(ret),
