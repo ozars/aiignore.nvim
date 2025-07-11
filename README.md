@@ -1,4 +1,10 @@
-# 🤖 aiignore.nvim
+<h1 align="center">🤖 aiignore.nvim</h1>
+
+<p align="center">
+<a href="https://github.com/ozars/aiignore.nvim/actions/workflows/actions.yml">
+<img alt="Github Actions Build" src="https://img.shields.io/github/actions/workflow/status/ozars/aiignore.nvim/rust.yml?style=for-the-badge&logo=github-actions">
+</a>
+</p>
 
 A small Neovim extension to prevent AI coding plugins (e.g. [`copilot.lua`])
 from attaching to files and directories specified in an `.aiignore` file.
