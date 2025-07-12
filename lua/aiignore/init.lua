@@ -42,7 +42,7 @@ end
 --- Merges another configuration object into this one.
 ---
 --- @param other? M.Config The other configuration object to merge.
---- @return M.Config config A new configuration object with merged values.
+--- @return M.Config config? A new configuration object with merged values.
 function M.Config:merge(other)
   if not other then
     return self -- No other config to merge, return self
@@ -104,6 +104,7 @@ function M.Pattern:new(path, lineno, line)
     return nil, "Failed to parse pattern: '" .. pattern .. "'"
   end
 
+  --- @type M.Pattern
   local ret = {
     path = path,
     lineno = lineno,
@@ -127,7 +128,8 @@ function M.Pattern:__tostring()
       self.line ..
       "'" ..
       (self.negate and " [negated]" or "") ..
-      (self.only_directory and " [only directory]" or "") .. (self.no_directory and " [no directory]" or "")
+      (self.only_directory and " [only directory]" or "") ..
+      (self.no_directory and " [no directory]" or "")
 end
 
 --- Checks the path against the pattern.
@@ -138,10 +140,8 @@ end
 --- @return boolean match Returns true if the path matches the pattern, false otherwise.
 function M.Pattern:match(path, is_directory, debug_log)
   if debug_log then
-    vim.notify(
-      "Matching path '" .. path .. "' against pattern " .. tostring(self),
-      vim.log.levels.DEBUG
-    )
+    vim.notify("Matching path '" .. path .. "' against pattern " .. tostring(self),
+      vim.log.levels.DEBUG)
   end
   if self.only_directory and not is_directory then
     if debug_log then
@@ -178,7 +178,7 @@ end
 --- @class CacheEntry
 --- @field patterns M.Pattern[] A list of patterns parsed from the .aiignore file.
 --- @field mtime_sec integer The last modification time in seconds.
---- @field mtime_nsec? integer The last modification time in seconds.
+--- @field mtime_nsec? integer The last modification time in nanoseconds (optional).
 --- @field size integer The size of the file in bytes.
 --- @field inode_number integer The inode number of the file.
 --- @field uid integer The user ID of the file owner.
@@ -190,7 +190,7 @@ local CacheEntry = {}
 ---
 --- @param patterns M.Pattern[] The list of patterns to cache.
 --- @param mtime_sec integer The last modification time in seconds.
---- @param mtime_nsec integer|nil The last modification time in seconds.
+--- @param mtime_nsec integer? The last modification time in nanoseconds (optional).
 --- @param size integer The size of the file in bytes.
 --- @param inode_number integer The inode number of the file.
 --- @param uid integer The user ID of the file owner.
@@ -198,6 +198,7 @@ local CacheEntry = {}
 --- @param mode integer The file mode.
 --- @return CacheEntry entry A new cache entry object with the given properties.
 function CacheEntry:new(patterns, mtime_sec, mtime_nsec, size, inode_number, uid, gid, mode)
+  --- @type CacheEntry
   local ret = {
     patterns = patterns,
     mtime_sec = mtime_sec,
@@ -213,9 +214,46 @@ function CacheEntry:new(patterns, mtime_sec, mtime_nsec, size, inode_number, uid
   return ret
 end
 
+--- @class Timespec
+--- @field sec integer The seconds part of the time.
+--- @field nsec? integer The nanoseconds part of the time (optional).
+
+--- @class FileStat
+--- @field dev integer The device ID.
+--- @field mode integer The file mode (permissions).
+--- @field nlink integer The number of hard links.
+--- @field uid integer The user ID of the file owner.
+--- @field gid integer The group ID of the file owner.
+--- @field rdev? integer The device ID (if special file).
+--- @field ino integer The inode number.
+--- @field size integer The size of the file in bytes.
+--- @field blksize integer The block size for filesystem I/O.
+--- @field blocks integer The number of blocks allocated for the file.
+--- @field flags integer The file flags.
+--- @field gen? integer The generation number (if applicable).
+--- @field atime Timespec The last access time.
+--- @field mtime Timespec The last modification time.
+--- @field ctime Timespec The last status change time.
+--- @field birthtime? Timespec The creation time (if available).
+--- @field type string The file type (e.g., "file", "directory", etc.).
+
+--- Checks if the cache entry matches the given file stat.
+---
+--- @param stat FileStat The file stat to compare against.
+--- @return boolean match Returns true if the cache entry matches the file stat, false otherwise.
+function CacheEntry:eq_stat(stat)
+  return self.mtime_sec == stat.mtime.sec and
+      self.mtime_nsec == stat.mtime.nsec and
+      self.size == stat.size and
+      self.inode_number == stat.ino and
+      self.uid == stat.uid and
+      self.gid == stat.gid and
+      self.mode == stat.mode
+end
+
 --- Cache for loaded .aiignore patterns to avoid repeated file I/O.
 ---
---- @type table<string, CacheEntry>
+--- @type { [string]: CacheEntry? }
 local _global_cache = {}
 
 --- Given a path, checks if the `.aiignore` file exists and returns its patterns.
@@ -227,17 +265,12 @@ local function _check_cache(path)
   if not entry then
     return nil -- No cache entry found
   end
+  --- @type FileStat?
   local file = vim.loop.fs_stat(path)
   if not file then
     return nil -- File does not exist or is not accessible
   end
-  if entry.mtime_nsec ~= file.mtime.sec or
-      entry.mtime_sec ~= file.mtime.nsec or
-      entry.size ~= file.size or
-      entry.inode_number ~= file.ino or
-      entry.uid ~= file.uid or
-      entry.gid ~= file.gid or
-      entry.mode ~= file.mode
+  if not entry:eq_stat(file)
   then -- Invalidate cache if any of the file attributes have changed
     _global_cache[path] = nil
     return nil
@@ -250,7 +283,7 @@ end
 --- @param path string The path to the .aiignore file.
 --- @param patterns M.Pattern[] The list of patterns to cache.
 --- @param config M.Config The configuration object.
---- @return M.Pattern[]|nil patterns Returns the cached patterns if successful, or nil if the file does not exist.
+--- @return M.Pattern[]? patterns Returns the cached patterns if successful, or nil if the file does not exist.
 local function _add_to_cache(path, patterns, config)
   local file = vim.loop.fs_stat(path)
   if not file then
@@ -322,16 +355,14 @@ end
 ---
 --- @param path string The (absolute) path to the file or directory to check.
 --- @param config M.Config The configuration.
---- @return M.Pattern|nil pattern Returns the first matching pattern if the path should be ignored, nil otherwise.
+--- @return M.Pattern? pattern Returns the first matching pattern if the path should be ignored, nil otherwise.
 function M.match_path(path, config)
   --- @type string?
   local git_root = vim.fs.root(path, config.git_dirname)
 
   if config.debug_log then
-    vim.notify(
-      "Inferred git root: '" .. (git_root or "none") .. "' for path '" .. path .. "'",
-      vim.log.levels.DEBUG
-    )
+    vim.notify("Inferred git root: '" .. (git_root or "none") .. "' for path '" .. path .. "'",
+      vim.log.levels.DEBUG)
   end
 
   if not git_root then -- If no git root is found, check the current directory only
@@ -345,10 +376,8 @@ function M.match_path(path, config)
 
   if path:sub(1, #git_root) ~= git_root then
     if not config.quiet then
-      vim.notify(
-        "Path '" .. path .. "' is not prefixed by the inferred git repository path '" .. git_root .. "'",
-        vim.log.levels.ERROR
-      )
+      vim.notify("Path '" .. path .. "' is not prefixed by the inferred git repository path '" .. git_root .. "'",
+        vim.log.levels.ERROR)
     end
     return nil
   end
@@ -368,8 +397,8 @@ function M.match_path(path, config)
 
   if paths[#paths] ~= git_root then -- Ensure that the last path is the git root
     if not config.quiet then
-      vim.notify(
-        "The last path '" .. paths[#paths] .. "' is not the git root '" .. git_root .. "'", vim.log.levels.ERROR)
+      vim.notify("The last path '" .. paths[#paths] .. "' is not the git root '" .. git_root .. "'",
+        vim.log.levels.ERROR)
     end
     return nil
   end
@@ -405,8 +434,10 @@ end
 
 --- The main function to be used for determining if AI extension should ignore a buffer.
 ---
---- Iterates through buffer's directories until root (or until it finds a .git root). Collects
---- patterns from `.aiignore` files and checks if the current file matches any of them.
+--- Iterates through buffer's directory and parents until it finds a git repository root. Collects
+--- patterns from `.aiignore` files found and checks if the current file matches any of them.
+---
+--- If not git root is found, it checks the `.aiignore` file in the current directory.
 ---
 --- Patterns are matched against the file's relative path to the `.aiignore` file's directory if
 --- the file is not in a git repository. If the file is in a git repository, the patterns are matched
@@ -430,10 +461,8 @@ function M.should_ignore(bufnr, config)
   if not vim.api.nvim_buf_is_valid(bufnr) then
     if (config.should_ignore_invalid_buffers and config.warn_ignored) or
         (not config.should_ignore_invalid_buffers and config.warn_not_ignored) then
-      vim.notify(
-        "Buffer " ..
-        bufnr .. " is not valid, " .. (config.should_ignore_invalid_buffers and "" or "NOT ") "ignored by aiignore",
-        vim.log.levels.ERROR)
+      vim.notify("Buffer " .. bufnr .. " is not valid, " .. (config.should_ignore_invalid_buffers and "" or "NOT ")
+        .. "ignored by aiignore", vim.log.levels.ERROR)
     end
     return config.should_ignore_invalid_buffers
   end
@@ -458,7 +487,7 @@ function M.should_ignore(bufnr, config)
   end
 
   if config.warn_not_ignored then
-    vim.notify("Bufer " .. bufnr .. " with path '" .. path .. "' is NOT ignored by aiignore.", vim.log.levels.WARN)
+    vim.notify("Buffer " .. bufnr .. " with path '" .. path .. "' is NOT ignored by aiignore.", vim.log.levels.WARN)
   end
   return false
 end

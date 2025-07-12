@@ -138,7 +138,7 @@ local function compile(toks)
         oneof_patt = nil
         mode = MODE_NORMAL
       elseif tok == OP_NEGATE then
-        oneof_patt = P(1) - oneof_patt
+        oneof_patt = ANY - oneof_patt
       elseif tok:len() == 3 then
         assert(tok:sub(2, 2) == "-", "Invalid range token: " .. tok)
         oneof_patt = R(tok:sub(1, 1) .. tok:sub(3, 3)) + oneof_patt
