@@ -9,7 +9,7 @@ local parser = require("aiignore.parser")
 --- Configuration for the plugin.
 ---
 --- @class M.Config
---- @field aiignore_filename string The name of the .aiignore file. Defaults to `.aiignore`.
+--- @field aiignore_filename string|string[] The name(s) of the .aiignore file. Defaults to `.aiignore`. Also supports multiple names like `{ ".aiignore", ".aiiexclude", ".cursorignore" }`.
 --- @field git_dirname string The name of the directory which will be used for finding a repository root. Defaults to `.git`.
 --- @field warn_ignored boolean Whether to notify the user if the file is ignored. Defaults to `false`.
 --- @field warn_not_ignored boolean Whether to notify the user if the file is not ignored. Defaults to `false`.
@@ -364,6 +364,20 @@ end
 --- @param config M.Config The configuration.
 --- @return M.Pattern? pattern Returns the first matching pattern if the path should be ignored, nil otherwise.
 function M.match_path(path, config)
+  --- @type string[]
+  local aiignore_filenames -- Coalesce to a list of filenames
+  if type(config.aiignore_filename) == "string" then
+    aiignore_filenames = { config.aiignore_filename --[[ @as string ]] }
+  elseif type(config.aiignore_filename) == "table" then
+    aiignore_filenames = config.aiignore_filename --[[ @as string[] ]]
+  else
+    if not config.quiet then
+      vim.notify("Invalid aiignore_filename configuration: " .. vim.inspect(config.aiignore_filename),
+        vim.log.levels.ERROR)
+    end
+    return nil -- Invalid configuration, do not ignore
+  end
+
   --- @type string?
   local git_root = vim.fs.root(path, config.git_dirname)
 
@@ -372,42 +386,37 @@ function M.match_path(path, config)
       vim.log.levels.DEBUG)
   end
 
-  if not git_root then -- If no git root is found, check the current directory only
-    local aiignore_path = vim.fn.fnamemodify(path, ":p:h") .. "/" .. config.aiignore_filename
-    local patterns = _parse_aiignore_file(aiignore_path, config)
-    if not patterns then
-      return nil -- No patterns found, do not ignore
-    end
-    return _match_path_against_patterns(path, false, patterns, config)
-  end
-
-  if path:sub(1, #git_root) ~= git_root then
-    if not config.quiet then
-      vim.notify("Path '" .. path .. "' is not prefixed by the inferred git repository path '" .. git_root .. "'",
-        vim.log.levels.ERROR)
-    end
-    return nil
-  end
-
-  -- Generate a list of paths to check
+  --- A list of paths to check, including necessary parent directories.
   --- @type string[]
   local paths = {}
 
-  table.insert(paths, path)             -- Start with the current path
+  table.insert(paths, path) -- Start with the current path
 
-  for parent in vim.fs.parents(path) do -- Iterate through parent directories
-    table.insert(paths, parent)
-    if parent == git_root then          -- Stop at the git root
-      break
+  if not git_root then      -- If no git root is found, check the current directory only
+    table.insert(paths, vim.fs.dirname(path))
+  else
+    if path:sub(1, #git_root) ~= git_root then
+      if not config.quiet then
+        vim.notify("Path '" .. path .. "' is not prefixed by the inferred git repository path '" .. git_root .. "'",
+          vim.log.levels.ERROR)
+      end
+      return nil
     end
-  end
 
-  if paths[#paths] ~= git_root then -- Ensure that the last path is the git root
-    if not config.quiet then
-      vim.notify("The last path '" .. paths[#paths] .. "' is not the git root '" .. git_root .. "'",
-        vim.log.levels.ERROR)
+    for parent in vim.fs.parents(path) do -- Iterate through parent directories
+      table.insert(paths, parent)
+      if parent == git_root then          -- Stop at the git root
+        break
+      end
     end
-    return nil
+
+    if paths[#paths] ~= git_root then -- Ensure that the last path is the git root
+      if not config.quiet then
+        vim.notify("The last path '" .. paths[#paths] .. "' is not the git root '" .. git_root .. "'",
+          vim.log.levels.ERROR)
+      end
+      return nil
+    end
   end
 
   if config.debug_log then
@@ -415,18 +424,20 @@ function M.match_path(path, config)
   end
 
   for i = #paths, 2, -1 do -- Iterate from the root until (and excluding) the current path
-    local aiignore_path = paths[i] .. "/" .. config.aiignore_filename
-    local patterns = _parse_aiignore_file(aiignore_path, config)
-    if patterns then
-      for j = i - 1, 1, -1 do -- Check all descendant paths against patterns
-        if config.debug_log then
-          vim.notify("Checking path '" .. paths[j] .. "' against patterns from '" .. aiignore_path .. "'",
-            vim.log.levels.DEBUG)
-        end
-        local is_directory = j ~= 1
-        local match = _match_path_against_patterns(paths[j], is_directory, patterns, config)
-        if match then
-          return match -- Return the first matching pattern found
+    for _, aiignore_filename in ipairs(aiignore_filenames) do
+      local aiignore_path = paths[i] .. "/" .. aiignore_filename
+      local patterns = _parse_aiignore_file(aiignore_path, config)
+      if patterns then
+        for j = i - 1, 1, -1 do -- Check all descendant paths against patterns
+          if config.debug_log then
+            vim.notify("Checking path '" .. paths[j] .. "' against patterns from '" .. aiignore_path .. "'",
+              vim.log.levels.DEBUG)
+          end
+          local is_directory = j ~= 1
+          local match = _match_path_against_patterns(paths[j], is_directory, patterns, config)
+          if match then
+            return match -- Return the first matching pattern found
+          end
         end
       end
     end

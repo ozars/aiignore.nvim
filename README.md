@@ -44,6 +44,7 @@ See below for an example setup with [`copilot.lua`]:
         return not aiignore.should_ignore(bufnr, {
           -- File and directory names configurations.
           aiignore_filename = ".aiignore", -- The name of the .aiignore file.
+          -- aiignore_filename = { ".aiexclude", ".aiignore" }, -- Multiple names are also supported. All of them will be checked.
           git_dirname = ".git",            -- The name of the directory which will be used for finding a repository root.
 
           -- Logging and notifications configurations.

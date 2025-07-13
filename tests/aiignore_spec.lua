@@ -166,6 +166,23 @@ describe("aiignore", function()
     assert.is_true(aiignore.should_ignore(2))
   end)
 
+  it("should ignore for given aiignore filenames", function()
+    mkfile("/tmp/my-project/.git")
+    mkfile("/tmp/my-project/.aiignore", "keys.json")
+    mkfile("/tmp/my-project/.aiexclude", "secrets.json")
+
+    local config = { aiignore_filename = { ".aiignore", ".aiexclude" } }
+
+    mkfile_and_buffer("/tmp/my-project/keys.json")
+    assert.is_true(aiignore.should_ignore(1, config))
+
+    mkfile_and_buffer("/tmp/my-project/secrets.json")
+    assert.is_true(aiignore.should_ignore(2, config))
+
+    mkfile_and_buffer("/tmp/my-project/config.json")
+    assert.is_false(aiignore.should_ignore(3, config))
+  end)
+
   it("should ignore for a file in an ignored directory", function()
     mkfile("/tmp/my-project/.git")
     mkfile("/tmp/my-project/.aiignore", "dist/")

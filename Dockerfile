@@ -8,7 +8,7 @@
 
 FROM ubuntu:24.04
 
-ARG NVIM_VERSION=v0.11.2
+ARG NVIM_VERSION=v0.11.3
 ARG NVIM_PKG=nvim-linux-x86_64.tar.gz
 ARG NVIM_URL=https://github.com/neovim/neovim/releases/download/${NVIM_VERSION}/${NVIM_PKG}
 
