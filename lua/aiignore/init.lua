@@ -42,7 +42,7 @@ end
 --- Merges another configuration object into this one.
 ---
 --- @param other? M.Config The other configuration object to merge.
---- @return M.Config config? A new configuration object with merged values.
+--- @return M.Config config A new configuration object with merged values.
 function M.Config:merge(other)
   if not other then
     return self -- No other config to merge, return self
@@ -301,7 +301,7 @@ end
 ---
 --- @param path string The path to the .aiignore file.
 --- @param config M.Config The configuration object.
---- @return M.Pattern[]? patterns Returns a list of patterns from the .aiignore file, or nil if the file does not exist or is not readable.
+--- @return M.Pattern[]? patterns A list of patterns from the .aiignore file, or nil if the file does not exist or is not readable.
 local function _parse_aiignore_file(path, config)
   local patterns = _check_cache(path)
   if patterns then
@@ -432,19 +432,16 @@ function M.match_path(path, config)
   return nil -- No patterns matched, do not ignore
 end
 
---- The main function to be used for determining if AI extension should ignore a buffer.
+--- The main function for determining if an AI extension should ignore a buffer.
 ---
---- Iterates through buffer's directory and parents until it finds a git repository root. Collects
---- patterns from `.aiignore` files found and checks if the current file matches any of them.
+--- Iterates through the buffer's directory and parents until it finds a git repository root.
+--- Collects patterns from `.aiignore` files found in the git repository root or any subdirectories
+--- leading to the buffer's path, and returns true if the buffer's path matches any patterns.
 ---
---- If not git root is found, it checks the `.aiignore` file in the current directory.
+--- If the file opened in the buffer isn't in a git repository, only the `.aiignore` file in the
+--- same directory with the buffer path is checked, if there is one.
 ---
---- Patterns are matched against the file's relative path to the `.aiignore` file's directory if
---- the file is not in a git repository. If the file is in a git repository, the patterns are matched
---- against all `.aiignore` files in the parent directories until the git root is reached, including
---- the git root itself.
----
---- The pattern format rules follow [the pattern format for `.gitignore`][pattern-format].
+--- The pattern rules follow [those used by `.gitignore`][pattern-format].
 ---
 --- [pattern-format]: https://github.com/git/git/blob/v2.50.0/Documentation/gitignore.adoc#pattern-format
 ---
