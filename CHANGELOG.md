@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.1.2 (dev)
+## 0.1.3 (dev)
+
+## 0.1.2 (2025-07-13)
 
 - Added support for priving an array of filenames for `aiignore_filename`
   configuration, e.g. `aiignore_filename = { ".aiexclude", ".aiignore" }`. When
