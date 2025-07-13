@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: '0 0 * * *'
 
 jobs:
   test:
@@ -11,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        nvim_tag: [nightly, v0.11.2, v0.10.4]
+        nvim_tag: [nightly, v0.11.3, v0.10.4]
 
     steps:
       - uses: actions/checkout@v4
