@@ -341,9 +341,16 @@ local function _match_path_against_patterns(path, is_directory, patterns, config
   for _, pattern in ipairs(patterns) do
     if pattern:match(path, is_directory, config.debug_log) then
       if pattern.negate then
+        if config.debug_log then
+          vim.notify("Path '" .. path .. "' matches the negated pattern: " .. tostring(pattern),
+            vim.log.levels.DEBUG)
+        end
         return nil -- Negated pattern, do not ignore
       end
       if first_match == nil or pattern.lineno < first_match.lineno then
+        if config.debug_log then
+          vim.notify("Path '" .. path .. "' matches the pattern: " .. tostring(pattern), vim.log.levels.DEBUG)
+        end
         first_match = pattern -- Found a matching pattern, keep the first one
       end
     end
@@ -418,7 +425,7 @@ function M.match_path(path, config)
         end
         local is_directory = j ~= 1
         local match = _match_path_against_patterns(paths[j], is_directory, patterns, config)
-        if match and not match.negate then
+        if match then
           return match -- Return the first matching pattern found
         end
       end
