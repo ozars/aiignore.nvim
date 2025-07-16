@@ -2,6 +2,8 @@
 
 ## 0.1.3 (dev)
 
+- Fix handling of trailing slash following a glob in the parser.
+
 ## 0.1.2 (2025-07-13)
 
 - Added support for priving an array of filenames for `aiignore_filename`

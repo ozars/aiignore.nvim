@@ -211,6 +211,13 @@ describe("PathPatternParser", function()
       assert_not_matches("a/b/", "a/b")
     end)
 
+    it("should handle glob ending with a slash correctly", function()
+      assert_matches("a/**/", "a/b/c/")
+      assert_not_matches("a/**/", "a/b/c")
+      assert_not_matches("a/**/", "prefix/a/b/c/")
+      assert_not_matches("a/**/", "prefix/a/b/c")
+    end)
+
     it("should handle patterns starting with a slash", function()
       assert_matches("/a/b/c", "/a/b/c")
       assert_not_matches("/a/b/c", "a/b/c")

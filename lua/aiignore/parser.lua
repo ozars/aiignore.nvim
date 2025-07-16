@@ -62,10 +62,10 @@ local NONGLOB = (C(STAR ^ 1) / "*" + C(WILDCARD) + ESCAPE * C(ANY) + C(NONSPECIA
 
 local PATTERN = Ct(C(SLASH) ^ -1 * P { "Pattern",
   Pattern =
-      C(GLOB) * C(SLASH) ^ -1 * END +
-      C(GLOB * SLASH) * V "Pattern" +
-      NONGLOB * C(SLASH) ^ -1 * END +
-      NONGLOB * C(SLASH) * V "Pattern",
+      C(GLOB) * END +
+      C(GLOB * SLASH) * (END + V "Pattern") +
+      NONGLOB * END +
+      NONGLOB * C(SLASH) * (END + V "Pattern"),
 })
 
 local NONSLASH = 1 - SLASH
