@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        nvim_tag: [nightly, v0.11.3, v0.10.4]
+        nvim_tag: [nightly, v0.11.5, v0.10.4]
 
     steps:
       - uses: actions/checkout@v4
