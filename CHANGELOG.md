@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.1.3 (dev)
+## 0.1.4 (dev)
+
+## 0.1.3 (2025-12-29)
 
 - Fix handling of trailing slash following a glob in the parser.
 - Added a new configuration option `force_disable_if_not_in_git` to control
