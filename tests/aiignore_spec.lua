@@ -183,6 +183,18 @@ describe("aiignore", function()
     assert.is_false(aiignore.should_ignore(3, config))
   end)
 
+  it("should ignore non-git repositiory when force_disable_if_not_in_git is set", function()
+    mkfile("/tmp/my-project/.aiignore", "*.js")
+
+    mkfile_and_buffer("/tmp/my-project/test.js")
+    assert.is_true(aiignore.should_ignore(1, { force_disable_if_not_in_git = false }))
+    assert.is_true(aiignore.should_ignore(1, { force_disable_if_not_in_git = true }))
+
+    mkfile_and_buffer("/tmp/my-project/test.lua")
+    assert.is_false(aiignore.should_ignore(2, { force_disable_if_not_in_git = false }))
+    assert.is_true(aiignore.should_ignore(2, { force_disable_if_not_in_git = true }))
+  end)
+
   it("should ignore for a file in an ignored directory", function()
     mkfile("/tmp/my-project/.git")
     mkfile("/tmp/my-project/.aiignore", "dist/")

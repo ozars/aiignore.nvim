@@ -17,6 +17,7 @@ local parser = require("aiignore.parser")
 --- @field quiet boolean Whether to ignore errors silently. Defaults to `false`.
 --- @field should_ignore_invalid_buffers boolean Whether to ignore invalid buffers. Defaults to `true`.
 --- @field should_ignore_unnamed_buffers boolean Whether to ignore unreadable buffers. Defaults to `true`.
+--- @field force_disable_if_not_in_git boolean Whether to always ignore files not in a git repository. Defaults to `false`.
 M.Config = {}
 
 --- Creates a new configuration object with default values.
@@ -33,6 +34,7 @@ function M.Config:new()
     quiet = false,
     should_ignore_invalid_buffers = true,
     should_ignore_unnamed_buffers = true,
+    force_disable_if_not_in_git = false,
   }
   setmetatable(config, self)
   self.__index = self
@@ -362,7 +364,7 @@ end
 ---
 --- @param path string The (absolute) path to the file or directory to check.
 --- @param config M.Config The configuration.
---- @return M.Pattern? pattern Returns the first matching pattern if the path should be ignored, nil otherwise.
+--- @return M.Pattern | string | nil pattern Returns the first matching pattern if the path should be ignored, or the reason it is ignored, nil otherwise.
 function M.match_path(path, config)
   --- @type string[]
   local aiignore_filenames -- Coalesce to a list of filenames
@@ -382,7 +384,7 @@ function M.match_path(path, config)
   local git_root = vim.fs.root(path, config.git_dirname)
 
   if config.debug_log then
-    vim.notify("Inferred git root: '" .. (git_root or "none") .. "' for path '" .. path .. "'",
+    vim.notify("Inferred git root: '" .. (git_root or "(none)") .. "' for path '" .. path .. "'",
       vim.log.levels.DEBUG)
   end
 
@@ -393,6 +395,15 @@ function M.match_path(path, config)
   table.insert(paths, path) -- Start with the current path
 
   if not git_root then      -- If no git root is found, check the current directory only
+    if config.force_disable_if_not_in_git then  -- unless configured otherwise
+      if config.debug_log then
+        vim.notify("Ignoring non-git path '" .. path .. "' due to force_disable_if_not_in_git setting",
+          vim.log.levels.DEBUG)
+      end
+      return "force_disable_if_not_in_git"
+    end
+    vim.notify("No git root found for path '" .. path .. "', checking only the current directory",
+      vim.log.levels.WARN)
     table.insert(paths, vim.fs.dirname(path))
   else
     if path:sub(1, #git_root) ~= git_root then

@@ -45,7 +45,8 @@ See below for an example setup with [`copilot.lua`]:
           -- File and directory names configurations.
           aiignore_filename = ".aiignore", -- The name of the .aiignore file.
           -- aiignore_filename = { ".aiexclude", ".aiignore" }, -- Multiple names are also supported. All of them will be checked.
-          git_dirname = ".git",            -- The name of the directory which will be used for finding a repository root.
+          git_dirname = ".git",                -- The name of the directory which will be used for finding a repository root.
+          force_disable_if_not_in_git = false  -- Whether to force disable if the file is not in a git repository.
 
           -- Logging and notifications configurations.
           warn_ignored = false,     -- Whether to notify the user if the file is ignored.

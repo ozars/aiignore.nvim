@@ -3,6 +3,8 @@
 ## 0.1.3 (dev)
 
 - Fix handling of trailing slash following a glob in the parser.
+- Added a new configuration option `force_disable_if_not_in_git` to control
+  whether to automatically ignore buffers not in a git repository.
 
 ## 0.1.2 (2025-07-13)
 
